@@ -11,6 +11,7 @@ import javafx.fxml.FXML;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Slider;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -34,11 +35,19 @@ public class ViewController {
 	@FXML
 	Button filePicker;
 
+	@FXML
+	CheckBox drawGrid;
+
+	@FXML
+	CheckBox drawContour;
+
 	private String imagePath = "sample.png";
 	private Image image;
 	private int imgWidth = 0;
 	private int imgHeight = 0;
 	private double zoom;
+	private boolean showGrid = false;
+	private boolean showContour = false;
 
 	@FXML
 	public void initialize() {
@@ -49,6 +58,20 @@ public class ViewController {
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				zoom = newValue.doubleValue();
 				onZoomChange();
+			}
+		});
+		this.drawGrid.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
+				showGrid = newValue;
+				drawOverlay(showGrid, showContour);
+			}
+		});
+		this.drawContour.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
+				showContour = newValue;
+				drawOverlay(showGrid, showContour);
 			}
 		});
 		this.filePicker.setOnMouseClicked(new EventHandler<Event>() {
@@ -74,12 +97,12 @@ public class ViewController {
 		Stage stage = (Stage) this.imageView.getScene().getWindow();
 		File file = fileChooser.showOpenDialog(stage);
 		if (file != null) {
-            try {
+			try {
 				this.openImage(file.getCanonicalPath());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-        }
+		}
 		this.zoom = 1;
 		this.onZoomChange();
 		this.zoomSlider.setValue(1.0);
@@ -87,16 +110,22 @@ public class ViewController {
 
 	private void renderImage(Image img) {
 		this.imageView.setImage(img);
-		this.drawOverlay();
+		this.drawOverlay(this.showGrid, this.showContour);
 	}
 
-	private void drawOverlay() {
+	private void drawOverlay(boolean showGrid, boolean showContour) {
 		double zoomedWidth = Math.ceil(zoom * this.imgWidth);
 		double zoomedHeight = Math.ceil(zoom * this.imgHeight);
 		this.overlayCanvas.setWidth(zoomedWidth);
 		this.overlayCanvas.setHeight(zoomedHeight);
 		GraphicsContext gc = this.overlayCanvas.getGraphicsContext2D();
 		gc.clearRect(0, 0, zoomedWidth, zoomedHeight);
+		if (showGrid) {
+			this.drawGrid(gc, zoomedWidth, zoomedHeight);
+		}
+	}
+	
+	private void drawGrid(GraphicsContext gc, double zoomedWidth, double zoomedHeight) {
 		gc.setStroke(Color.RED);
 		gc.setLineWidth(1);
 		double gridPixelDistance = this.zoom > 10 ? 1 : 16;
