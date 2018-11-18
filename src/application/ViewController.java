@@ -2,7 +2,10 @@ package application;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import application.Util.Angle;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.Event;
@@ -41,18 +44,18 @@ public class ViewController {
 	@FXML
 	CheckBox drawContour;
 
-	private String imagePath = "sample.png";
-	private Image image;
-	private int imgWidth = 0;
-	private int imgHeight = 0;
+	private String imagePath = "klein.png";
+	private RasterImage image;
 	private double zoom;
 	private boolean showGrid = false;
 	private boolean showContour = false;
+	private List<List<Integer>> contours;
 
 	@FXML
 	public void initialize() {
 		this.zoom = 1;
 		this.openImage(this.imagePath);
+		this.contours = this.potrace();
 		this.zoomSlider.valueProperty().addListener(new ChangeListener<Number>() {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
@@ -83,12 +86,12 @@ public class ViewController {
 	}
 
 	private void onZoomChange() {
-		double zoomedWidth = Math.ceil(this.zoom * this.imgWidth);
-		double zoomedHeight = Math.ceil(this.zoom * this.imgHeight);
+		double zoomedWidth = Math.ceil(this.zoom * this.image.width);
+		double zoomedHeight = Math.ceil(this.zoom * this.image.width);
 		this.imageView.setFitWidth(zoomedWidth);
 		this.imageView.setFitHeight(zoomedHeight);
-		Image img = new Image(new File(this.imagePath).toURI().toString(), zoomedWidth, zoomedHeight, true, false);
-		this.renderImage(img);
+		Image image = new Image(new File(this.imagePath).toURI().toString(), zoomedWidth, zoomedHeight, true, false);
+		this.renderImage(image);
 	}
 
 	private void openFilePicker() {
@@ -106,6 +109,7 @@ public class ViewController {
 		this.zoom = 1;
 		this.onZoomChange();
 		this.zoomSlider.setValue(1.0);
+		this.contours = this.potrace();
 	}
 
 	private void renderImage(Image img) {
@@ -114,8 +118,8 @@ public class ViewController {
 	}
 
 	private void drawOverlay(boolean showGrid, boolean showContour) {
-		double zoomedWidth = Math.ceil(zoom * this.imgWidth);
-		double zoomedHeight = Math.ceil(zoom * this.imgHeight);
+		double zoomedWidth = Math.ceil(zoom * this.image.width);
+		double zoomedHeight = Math.ceil(zoom * this.image.height);
 		this.overlayCanvas.setWidth(zoomedWidth);
 		this.overlayCanvas.setHeight(zoomedHeight);
 		GraphicsContext gc = this.overlayCanvas.getGraphicsContext2D();
@@ -124,7 +128,7 @@ public class ViewController {
 			this.drawGrid(gc, zoomedWidth, zoomedHeight);
 		}
 	}
-	
+
 	private void drawGrid(GraphicsContext gc, double zoomedWidth, double zoomedHeight) {
 		gc.setStroke(Color.RED);
 		gc.setLineWidth(1);
@@ -140,26 +144,103 @@ public class ViewController {
 
 	private void openImage(String path) {
 		this.imagePath = path;
-		this.image = new Image(new File(this.imagePath).toURI().toString());
-		this.imgWidth = (int) this.image.getWidth();
-		this.imgHeight = (int) this.image.getHeight();
-		this.renderImage(this.image);
+		this.image = new RasterImage(this.imagePath);
+		this.renderImage(this.image.image);
 	}
 
-	private int[] getArgbPixels() {
-		int[] pixels = new int[this.imgWidth * this.imgHeight];
-		image.getPixelReader().getPixels(0, 0, this.imgWidth, this.imgHeight, PixelFormat.getIntArgbInstance(), pixels,
-				0, this.imgWidth);
-		return pixels;
-	}
-
-	private boolean setArgbPixels(int[] pixels) {
-		if (pixels.length != this.imgWidth * this.imgHeight) {
-			return false;
+	private List<List<Integer>> potrace() {
+		List<List<Integer>> contours = new ArrayList<>();
+		int[] pixels = this.image.argb;
+		boolean inDoubtGoRight = true;
+		for (int y = 0; y < this.image.height; y++) {
+			for (int x = 0; x < this.image.width; x++) {
+				int pos = y * this.image.width + x;
+				if (Util.getGrayValue(pixels[pos]) == 0) {
+					List<Integer> contour = new ArrayList<>();
+					contour.add(pos);
+					int direction = 180;
+					int destination = this.takeStep(this.image, x, y, direction);
+					contour.add(destination);
+					while (true) {
+						int oldX = destination % this.image.width;
+						int oldY = destination / this.image.width;
+						direction = this.pickDirection(this.image, oldX, oldY, direction, inDoubtGoRight);
+						destination = this.takeStep(this.image, oldX, oldY, direction);
+						if (destination == pos) {
+							break;
+						}
+						contour.add(destination);
+					}
+					contours.add(contour);
+					// TODO: invert rest of line here so we don't draw the same contour over and over!
+					// for now just return the first contour
+					return contours;
+				}
+			}
 		}
-		WritableImage writeImage = new WritableImage(this.imgWidth, this.imgHeight);
-		PixelWriter pw = writeImage.getPixelWriter();
-		pw.setPixels(0, 0, this.imgWidth, this.imgHeight, PixelFormat.getIntArgbInstance(), pixels, 0, this.imgWidth);
-		return true;
+		return contours;
 	}
+
+	/**
+	 * Returns the target position index after taking the step. Part of the potrace
+	 * algorithm.
+	 * 
+	 * @param image
+	 * @param x
+	 * @param y
+	 * @param direction in degrees, north is 0. Increases clockwise up to 359.
+	 * @return
+	 */
+	private int takeStep(RasterImage image, int x, int y, int direction) {
+		if (direction == 0) {
+			y--;
+		} else if (direction == 90) {
+			x++;
+		} else if (direction == 180) {
+			y++;
+		} else if (direction == 270) {
+			x--;
+		}
+		return y * image.width + x;
+	}
+
+	private int pickDirection(RasterImage image, int x, int y, int previousDirection, boolean inDoubtGoRight) {
+		int[] neighbors = new int[] { Util.getValue(image, x - 1, y - 1), Util.getValue(image, x, y - 1),
+				Util.getValue(image, x - 1, y), Util.getValue(image, x, y) };
+		Angle rotationAngle = Angle.DEG0;
+		if (previousDirection == 90) {
+			rotationAngle = Angle.DEG90;
+		} else if (previousDirection == 180) {
+			rotationAngle = Angle.DEG180;
+		} else if (previousDirection == 270) {
+			rotationAngle = Angle.DEG270;
+		}
+		int[] rotatedNeighbors = Util.rotate2by2matrix(neighbors, rotationAngle);
+		boolean topLeftNeighborBlack = Util.getGrayValue(rotatedNeighbors[0]) == 0;
+		boolean topRightNeighborBlack = Util.getGrayValue(rotatedNeighbors[1]) == 0;
+		int turnAngle = 0;
+		if (topLeftNeighborBlack && topRightNeighborBlack) {
+			turnAngle = 90;
+		} else if (topLeftNeighborBlack && !topRightNeighborBlack) {
+			return previousDirection;
+		} else if (!topLeftNeighborBlack && !topRightNeighborBlack) {
+			turnAngle = -90;
+		} else if (!topLeftNeighborBlack && topRightNeighborBlack) {
+			turnAngle = inDoubtGoRight ? 90 : -90;
+		} else {
+			throw new RuntimeException("An invalid state has occured during direction picking.");
+		}
+		return (previousDirection + turnAngle + 360) % 360;
+	}
+
+//	private boolean setArgbPixels(int[] pixels) {
+//		if (pixels.length != this.image.width * this.image.height) {
+//			return false;
+//		}
+//		WritableImage writeImage = new WritableImage(this.image.width, this.image.height);
+//		PixelWriter pw = writeImage.getPixelWriter();
+//		pw.setPixels(0, 0, this.image.width, this.image.height, PixelFormat.getIntArgbInstance(), pixels, 0,
+//				this.image.width);
+//		return true;
+//	}
 }
