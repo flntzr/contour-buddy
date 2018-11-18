@@ -19,9 +19,6 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Slider;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.image.PixelFormat;
-import javafx.scene.image.PixelWriter;
-import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -138,6 +135,7 @@ public class ViewController {
 		gc.setStroke(Color.GREEN);
 		for (int i = 0; i < this.contours.size(); i++) {
 			List<Integer> contour = this.contours.get(i);
+			int contourLength = contour.size();
 			int from = contour.get(0);
 			int to = contour.get(1);
 			int fromX = from % this.image.width;
@@ -145,11 +143,11 @@ public class ViewController {
 			int toX = to % this.image.width;
 			int toY = to / this.image.width;
 			gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
-			for (int j = 2; j < contour.size(); j++) {
+			for (int j = 2; j <= contourLength; j++) {
 				from = to;
 				fromX = toX;
 				fromY = toY;
-				to = contour.get(j);
+				to = contour.get(j % contourLength);
 				toX = to % this.image.width;
 				toY = to / this.image.width;
 				gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
