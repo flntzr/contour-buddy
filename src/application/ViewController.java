@@ -3,6 +3,7 @@ package application;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import application.Util.Angle;
@@ -127,6 +128,33 @@ public class ViewController {
 		if (showGrid) {
 			this.drawGrid(gc, zoomedWidth, zoomedHeight);
 		}
+		if (showContour) {
+			this.drawContours(gc, this.zoom);
+		}
+	}
+
+	private void drawContours(GraphicsContext gc, double zoom) {
+		gc.setLineWidth(3);
+		gc.setStroke(Color.GREEN);
+		for (int i = 0; i < this.contours.size(); i++) {
+			List<Integer> contour = this.contours.get(i);
+			int from = contour.get(0);
+			int to = contour.get(1);
+			int fromX = from % this.image.width;
+			int fromY = from / this.image.width;
+			int toX = to % this.image.width;
+			int toY = to / this.image.width;
+			gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
+			for (int j = 2; j < contour.size(); j++) {
+				from = to;
+				fromX = toX;
+				fromY = toY;
+				to = contour.get(j);
+				toX = to % this.image.width;
+				toY = to / this.image.width;
+				gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
+			}
+		}
 	}
 
 	private void drawGrid(GraphicsContext gc, double zoomedWidth, double zoomedHeight) {
@@ -150,7 +178,7 @@ public class ViewController {
 
 	private List<List<Integer>> potrace() {
 		List<List<Integer>> contours = new ArrayList<>();
-		int[] pixels = this.image.argb;
+		int[] pixels = Arrays.copyOf(this.image.argb, this.image.argb.length);
 		boolean inDoubtGoRight = true;
 		for (int y = 0; y < this.image.height; y++) {
 			for (int x = 0; x < this.image.width; x++) {
@@ -172,7 +200,8 @@ public class ViewController {
 						contour.add(destination);
 					}
 					contours.add(contour);
-					// TODO: invert rest of line here so we don't draw the same contour over and over!
+					// TODO: invert rest of line here so we don't draw the same contour over and
+					// over!
 					// for now just return the first contour
 					return contours;
 				}
