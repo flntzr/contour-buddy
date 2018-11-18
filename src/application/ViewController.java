@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import application.Util.Angle;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.Event;
@@ -47,7 +46,7 @@ public class ViewController {
 	private double zoom;
 	private boolean showGrid = false;
 	private boolean showContour = false;
-	private List<List<Integer>> contours;
+	private List<Contour> contours;
 
 	@FXML
 	public void initialize() {
@@ -108,6 +107,7 @@ public class ViewController {
 		this.onZoomChange();
 		this.zoomSlider.setValue(1.0);
 		this.contours = this.potrace();
+		this.renderImage(this.image.image);
 	}
 
 	private void renderImage(Image img) {
@@ -131,23 +131,23 @@ public class ViewController {
 	}
 
 	private void drawContours(GraphicsContext gc, double zoom) {
-		gc.setLineWidth(3);
-		gc.setStroke(Color.GREEN);
+		int lineWidth = (int) Math.max(1, zoom / 2);
+		gc.setLineWidth(lineWidth);
 		for (int i = 0; i < this.contours.size(); i++) {
-			List<Integer> contour = this.contours.get(i);
-			int contourLength = contour.size();
-			int from = contour.get(0);
-			int to = contour.get(1);
+			Contour contour = this.contours.get(i);
+			gc.setStroke(contour.isOuter ? Color.RED : Color.ORANGE);
+			int from = contour.path[0];
+			int to = contour.path[1];
 			int fromX = from % this.image.width;
 			int fromY = from / this.image.width;
 			int toX = to % this.image.width;
 			int toY = to / this.image.width;
 			gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
-			for (int j = 2; j <= contourLength; j++) {
+			for (int j = 2; j <= contour.path.length; j++) {
 				from = to;
 				fromX = toX;
 				fromY = toY;
-				to = contour.get(j % contourLength);
+				to = contour.path[j % contour.path.length];
 				toX = to % this.image.width;
 				toY = to / this.image.width;
 				gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
@@ -155,8 +155,35 @@ public class ViewController {
 		}
 	}
 
+	private int[] invertContouredArea(int[] pixels, int width, int height, List<Integer> contour) {
+		int contourLength = contour.size();
+		int from = contour.get(0);
+		int to = contour.get(1);
+		int fromX = from % width;
+		int fromY = from / width;
+		int toX = to % width;
+		int toY = to / width;
+		pixels = Util.invertRemainingLine(pixels, width, height, fromX, fromY);
+		for (int j = 2; j <= contourLength; j++) {
+			from = to;
+			fromX = toX;
+			fromY = toY;
+			to = contour.get(j % contourLength);
+			toX = to % width;
+			toY = to / width;
+			if (toY == fromY + 1) {
+				// going down
+				pixels = Util.invertRemainingLine(pixels, width, height, fromX, fromY);
+			} else if (toY == fromY - 1) {
+				// going up
+				pixels = Util.invertRemainingLine(pixels, width, height, toX, toY);
+			}
+		}
+		return pixels;
+	}
+
 	private void drawGrid(GraphicsContext gc, double zoomedWidth, double zoomedHeight) {
-		gc.setStroke(Color.RED);
+		gc.setStroke(Color.BLACK);
 		gc.setLineWidth(1);
 		double gridPixelDistance = this.zoom > 10 ? 1 : 16;
 		double gridSpacing = this.zoom * gridPixelDistance;
@@ -174,34 +201,34 @@ public class ViewController {
 		this.renderImage(this.image.image);
 	}
 
-	private List<List<Integer>> potrace() {
-		List<List<Integer>> contours = new ArrayList<>();
+	private List<Contour> potrace() {
+		List<Contour> contours = new ArrayList<>();
 		int[] pixels = Arrays.copyOf(this.image.argb, this.image.argb.length);
 		boolean inDoubtGoRight = true;
 		for (int y = 0; y < this.image.height; y++) {
 			for (int x = 0; x < this.image.width; x++) {
 				int pos = y * this.image.width + x;
 				if (Util.getGrayValue(pixels[pos]) == 0) {
-					List<Integer> contour = new ArrayList<>();
-					contour.add(pos);
+					List<Integer> contourPath = new ArrayList<>();
+					contourPath.add(pos);
 					int direction = 180;
 					int destination = this.takeStep(this.image, x, y, direction);
-					contour.add(destination);
+					contourPath.add(destination);
 					while (true) {
 						int oldX = destination % this.image.width;
 						int oldY = destination / this.image.width;
-						direction = this.pickDirection(this.image, oldX, oldY, direction, inDoubtGoRight);
+						direction = this.pickDirection(pixels, this.image.width, this.image.height, oldX, oldY,
+								direction, inDoubtGoRight);
 						destination = this.takeStep(this.image, oldX, oldY, direction);
 						if (destination == pos) {
 							break;
 						}
-						contour.add(destination);
+						contourPath.add(destination);
 					}
+					boolean isOuter = Util.getGrayValue(this.image.argb[pos]) == 0;
+					Contour contour = new Contour(contourPath.stream().mapToInt(i -> i).toArray(), isOuter);
 					contours.add(contour);
-					// TODO: invert rest of line here so we don't draw the same contour over and
-					// over!
-					// for now just return the first contour
-					return contours;
+					pixels = this.invertContouredArea(pixels, this.image.width, this.image.height, contourPath);
 				}
 			}
 		}
@@ -231,18 +258,12 @@ public class ViewController {
 		return y * image.width + x;
 	}
 
-	private int pickDirection(RasterImage image, int x, int y, int previousDirection, boolean inDoubtGoRight) {
-		int[] neighbors = new int[] { Util.getValue(image, x - 1, y - 1), Util.getValue(image, x, y - 1),
-				Util.getValue(image, x - 1, y), Util.getValue(image, x, y) };
-		Angle rotationAngle = Angle.DEG0;
-		if (previousDirection == 90) {
-			rotationAngle = Angle.DEG90;
-		} else if (previousDirection == 180) {
-			rotationAngle = Angle.DEG180;
-		} else if (previousDirection == 270) {
-			rotationAngle = Angle.DEG270;
-		}
-		int[] rotatedNeighbors = Util.rotate2by2matrix(neighbors, rotationAngle);
+	private int pickDirection(int[] pixels, int width, int height, int x, int y, int previousDirection,
+			boolean inDoubtGoRight) {
+		int[] neighbors = new int[] { Util.getValue(pixels, width, height, x - 1, y - 1),
+				Util.getValue(pixels, width, height, x, y - 1), Util.getValue(pixels, width, height, x - 1, y),
+				Util.getValue(pixels, width, height, x, y) };
+		int[] rotatedNeighbors = Util.rotate2by2matrix(neighbors, previousDirection);
 		boolean topLeftNeighborBlack = Util.getGrayValue(rotatedNeighbors[0]) == 0;
 		boolean topRightNeighborBlack = Util.getGrayValue(rotatedNeighbors[1]) == 0;
 		int turnAngle = 0;
@@ -259,15 +280,4 @@ public class ViewController {
 		}
 		return (previousDirection + turnAngle + 360) % 360;
 	}
-
-//	private boolean setArgbPixels(int[] pixels) {
-//		if (pixels.length != this.image.width * this.image.height) {
-//			return false;
-//		}
-//		WritableImage writeImage = new WritableImage(this.image.width, this.image.height);
-//		PixelWriter pw = writeImage.getPixelWriter();
-//		pw.setPixels(0, 0, this.image.width, this.image.height, PixelFormat.getIntArgbInstance(), pixels, 0,
-//				this.image.width);
-//		return true;
-//	}
 }
