@@ -46,7 +46,7 @@ public class PolygonUtil {
 	}
 
 	private static boolean respectsConstrains(int[] v) {
-		return Util.crossProduct(c0, v) >= 0 && Util.crossProduct(c1, v) >= 0;
+		return Util.crossProduct(c0, v) >= 0 && Util.crossProduct(c1, v) <= 0;
 	}
 
 	private static void updateConstraints(int[] v) {
