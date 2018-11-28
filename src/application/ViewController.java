@@ -41,18 +41,25 @@ public class ViewController {
 	@FXML
 	CheckBox drawContour;
 
+	@FXML
+	CheckBox drawPolygon;
+
 	private String imagePath = "klein.png";
 	private RasterImage image;
 	private double zoom;
 	private boolean showGrid = false;
 	private boolean showContour = false;
+	private boolean showPolygon = false;
 	private List<Contour> contours;
+	private int[][] straightPaths;
+	private int[][] possibleSegments;
 
 	@FXML
 	public void initialize() {
 		this.zoom = 1;
 		this.openImage(this.imagePath);
 		this.contours = this.potrace();
+		this.straightPaths = PolygonUtil.getStraightPaths(this.contours, this.image.width, this.image.height);
 		this.zoomSlider.valueProperty().addListener(new ChangeListener<Number>() {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
@@ -64,14 +71,21 @@ public class ViewController {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
 				showGrid = newValue;
-				drawOverlay(showGrid, showContour);
+				drawOverlay(showGrid, showContour, showPolygon);
 			}
 		});
 		this.drawContour.selectedProperty().addListener(new ChangeListener<Boolean>() {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
 				showContour = newValue;
-				drawOverlay(showGrid, showContour);
+				drawOverlay(showGrid, showContour, showPolygon);
+			}
+		});
+		this.drawPolygon.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
+				showPolygon = newValue;
+				drawOverlay(showGrid, showContour, showPolygon);
 			}
 		});
 		this.filePicker.setOnMouseClicked(new EventHandler<Event>() {
@@ -107,15 +121,16 @@ public class ViewController {
 		this.onZoomChange();
 		this.zoomSlider.setValue(1.0);
 		this.contours = this.potrace();
+		this.straightPaths = PolygonUtil.getStraightPaths(this.contours, this.image.width, this.image.height);
 		this.renderImage(this.image.image);
 	}
 
 	private void renderImage(Image img) {
 		this.imageView.setImage(img);
-		this.drawOverlay(this.showGrid, this.showContour);
+		this.drawOverlay(this.showGrid, this.showContour, this.showPolygon);
 	}
 
-	private void drawOverlay(boolean showGrid, boolean showContour) {
+	private void drawOverlay(boolean showGrid, boolean showContour, boolean showPolygon) {
 		double zoomedWidth = Math.ceil(zoom * this.image.width);
 		double zoomedHeight = Math.ceil(zoom * this.image.height);
 		this.overlayCanvas.setWidth(zoomedWidth);
