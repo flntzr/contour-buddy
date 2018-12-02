@@ -53,13 +53,14 @@ public class ViewController {
 	private List<Contour> contours;
 	private int[][] straightPaths;
 	private int[][] possibleSegments;
+	private int[][] polygons;
 
 	@FXML
 	public void initialize() {
 		this.zoom = 1;
 		this.openImage(this.imagePath);
 		this.contours = this.potrace();
-		this.straightPaths = PolygonUtil.getStraightPaths(this.contours, this.image.width, this.image.height);
+		this.preparePolygons();
 		this.zoomSlider.valueProperty().addListener(new ChangeListener<Number>() {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
@@ -121,7 +122,7 @@ public class ViewController {
 		this.onZoomChange();
 		this.zoomSlider.setValue(1.0);
 		this.contours = this.potrace();
-		this.straightPaths = PolygonUtil.getStraightPaths(this.contours, this.image.width, this.image.height);
+		this.preparePolygons();
 		this.renderImage(this.image.image);
 	}
 
@@ -142,6 +143,41 @@ public class ViewController {
 		}
 		if (showContour) {
 			this.drawContours(gc, this.zoom);
+		}
+		if (showPolygon) {
+			this.drawPolygons(gc, this.zoom);
+		}
+	}
+
+	private void preparePolygons() {
+		this.straightPaths = PolygonUtil.getStraightPaths(this.contours, this.image.width, this.image.height);
+		this.possibleSegments = PolygonUtil.straightPathsToPossibleSegments(this.straightPaths);
+		this.polygons = PolygonUtil.getDrawableContoursFromZero(this.straightPaths);
+	}
+
+	private void drawPolygons(GraphicsContext gc, double zoom) {
+		int lineWidth = (int) Math.max(1, zoom / 2);
+		gc.setLineWidth(lineWidth);
+		gc.setStroke(Color.PURPLE);
+		for (int i = 0; i < this.polygons.length; i++) {
+			int[] contour = this.contours.get(i).path;
+			int[] polygon = this.polygons[i];
+			int from = contour[polygon[0]];
+			int to = contour[polygon[1]];
+			int fromX = from % this.image.width;
+			int fromY = from / this.image.width;
+			int toX = to % this.image.width;
+			int toY = to / this.image.width;
+			gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
+			for (int j = 2; j < polygon.length; j++) {
+				from = to;
+				to = contour[polygon[j]];
+				fromX = from % this.image.width;
+				fromY = from / this.image.width;
+				toX = to % this.image.width;
+				toY = to / this.image.width;
+				gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
+			}
 		}
 	}
 

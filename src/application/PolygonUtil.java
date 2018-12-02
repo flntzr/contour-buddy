@@ -1,11 +1,41 @@
 package application;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PolygonUtil {
 
 	public static int[] c0;
 	public static int[] c1;
+
+	public static int[][] getDrawableContoursFromZero(int[][] possibleSegments) {
+		int[][] result = new int[possibleSegments.length][];
+		for (int i = 0; i < possibleSegments.length; i++) {
+			List<Integer> paths = new ArrayList<>();
+			paths.add(0);
+			int next = possibleSegments[i][0];
+			paths.add(next);
+			while (next < possibleSegments[i].length) {
+				next += possibleSegments[i][next];
+				paths.add(next % possibleSegments[i].length);
+			}
+			// correct the last entry to close with point 0
+			paths.set(paths.size() - 1, 0);
+			result[i] = paths.stream().mapToInt(k -> k).toArray();
+		}
+		return result;
+	}
+
+	public static int[][] straightPathsToPossibleSegments(int[][] straightPaths) {
+		int[][] possibleSegments = new int[straightPaths.length][];
+		for (int i = 0; i < straightPaths.length; i++) {
+			possibleSegments[i] = new int[straightPaths[i].length];
+			for (int j = 0; j < straightPaths[i].length; j++) {
+				possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - 1;
+			}
+		}
+		return possibleSegments;
+	}
 
 	public static int[][] getStraightPaths(List<Contour> contours, int width, int height) {
 		int[][] result = new int[contours.size()][];
