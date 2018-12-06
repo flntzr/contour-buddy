@@ -152,7 +152,11 @@ public class ViewController {
 	private void preparePolygons() {
 		this.straightPaths = PolygonUtil.getStraightPaths(this.contours, this.image.width, this.image.height);
 		this.possibleSegments = PolygonUtil.straightPathsToPossibleSegments(this.straightPaths);
-		this.polygons = PolygonUtil.getDrawableContoursFromZero(this.straightPaths);
+		int[] countourLengths = new int[this.contours.size()];
+		for (int i = 0; i < contours.size(); i++) {
+			countourLengths[i] = contours.get(i).path.length;
+		}
+		this.polygons = PolygonUtil.getDrawableContoursFromZero(this.possibleSegments, countourLengths);
 	}
 
 	private void drawPolygons(GraphicsContext gc, double zoom) {

@@ -8,13 +8,13 @@ public class PolygonUtil {
 	public static int[] c0;
 	public static int[] c1;
 
-	public static int[][] getDrawableContoursFromZero(int[][] possibleSegments) {
+	public static int[][] getDrawableContoursFromZero(int[][] possibleSegments, int[] contourLengths) {
 		int[][] result = new int[possibleSegments.length][];
 		for (int i = 0; i < possibleSegments.length; i++) {
 			List<Integer> paths = new ArrayList<>();
 			paths.add(0);
-			int next = possibleSegments[i][0];
-			paths.add(next);
+			int next = possibleSegments[i][0]% contourLengths[i];
+			paths.add(next% contourLengths[i]);
 			while (next < possibleSegments[i].length) {
 				next = possibleSegments[i][next];
 				paths.add(next);
