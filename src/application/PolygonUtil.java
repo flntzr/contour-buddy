@@ -16,8 +16,8 @@ public class PolygonUtil {
 			int next = possibleSegments[i][0];
 			paths.add(next);
 			while (next < possibleSegments[i].length) {
-				next += possibleSegments[i][next];
-				paths.add(next % possibleSegments[i].length);
+				next = possibleSegments[i][next];
+				paths.add(next);
 			}
 			// correct the last entry to close with point 0
 			paths.set(paths.size() - 1, 0);
@@ -53,14 +53,14 @@ public class PolygonUtil {
 			c0 = new int[] { 0, 0 };
 			c1 = new int[] { 0, 0 };
 			int endIndex = 0;
-			for (int k = 0; k < path.length; k++) {
+			int iX = path[i] % width;
+			int iY = path[i] / width;
+			for (int k = i + 1; k < i + path.length; k++) {
 				// k marks the (current) end point of the path
 				if (countDirections(directions) > 3) {
 					break;
 				}
-				int boundedK = k % path.length;
-				int iX = path[i] % width;
-				int iY = path[i] / width;
+				int boundedK = k % path.length;	
 				int kX = path[boundedK] % width;
 				int kY = path[boundedK] / width;
 				int[] v = { kX - iX, kY - iY };
@@ -68,7 +68,7 @@ public class PolygonUtil {
 					break;
 				}
 				updateConstraints(v);
-				endIndex = boundedK;
+				endIndex = k;
 			}
 			result[i] = endIndex;
 		}
