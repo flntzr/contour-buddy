@@ -13,8 +13,8 @@ public class PolygonUtil {
 		for (int i = 0; i < possibleSegments.length; i++) {
 			List<Integer> paths = new ArrayList<>();
 			paths.add(0);
-			int next = possibleSegments[i][0]% contourLengths[i];
-			paths.add(next% contourLengths[i]);
+			int next = possibleSegments[i][0] % contourLengths[i];
+			paths.add(next % contourLengths[i]);
 			while (next < possibleSegments[i].length) {
 				next = possibleSegments[i][next];
 				paths.add(next);
@@ -26,12 +26,22 @@ public class PolygonUtil {
 		return result;
 	}
 
-	public static int[][] straightPathsToPossibleSegments(int[][] straightPaths) {
+	public static int[][] straightPathsToPossibleSegments(int[][] straightPaths, int[] contourLengths) {
+		int lower = 1;
 		int[][] possibleSegments = new int[straightPaths.length][];
 		for (int i = 0; i < straightPaths.length; i++) {
 			possibleSegments[i] = new int[straightPaths[i].length];
 			for (int j = 0; j < straightPaths[i].length; j++) {
-				possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - 1;
+				if((straightPaths[i][j] - 1) - j <= contourLengths[i] - 3) {
+					possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - 1;
+				}
+				else {
+					while((straightPaths[i][j] - lower) - j > contourLengths[i] - 3) {
+						lower++;
+					}
+					possibleSegments[i][(j) % straightPaths[i].length] = straightPaths[i][j] - lower;
+					lower = 1;
+				}
 			}
 		}
 		return possibleSegments;
