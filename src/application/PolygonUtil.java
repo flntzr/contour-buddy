@@ -32,14 +32,13 @@ public class PolygonUtil {
 		for (int i = 0; i < straightPaths.length; i++) {
 			possibleSegments[i] = new int[straightPaths[i].length];
 			for (int j = 0; j < straightPaths[i].length; j++) {
-				if((straightPaths[i][j] - 1) - j <= contourLengths[i] - 3) {
+				if ((straightPaths[i][j] - 1) - j <= contourLengths[i] - 3) {
 					possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - 1;
-				}
-				else {
-					while((straightPaths[i][j] - lower) - j > contourLengths[i] - 3) {
+				} else {
+					while ((straightPaths[i][j] - lower) - j > contourLengths[i] - 3) {
 						lower++;
 					}
-					possibleSegments[i][(j) % straightPaths[i].length] = straightPaths[i][j] - lower;
+					possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - lower;
 					lower = 1;
 				}
 			}
@@ -70,7 +69,7 @@ public class PolygonUtil {
 				if (countDirections(directions) > 3) {
 					break;
 				}
-				int boundedK = k % path.length;	
+				int boundedK = k % path.length;
 				int kX = path[boundedK] % width;
 				int kY = path[boundedK] / width;
 				int[] v = { kX - iX, kY - iY };
