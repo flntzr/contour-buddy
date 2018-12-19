@@ -27,7 +27,6 @@ public class PolygonUtil {
 	}
 
 	public static int[][] straightPathsToPossibleSegments(int[][] straightPaths, int[] contourLengths) {
-		int lower = 1;
 		int[][] possibleSegments = new int[straightPaths.length][];
 		for (int i = 0; i < straightPaths.length; i++) {
 			possibleSegments[i] = new int[straightPaths[i].length];
@@ -35,11 +34,7 @@ public class PolygonUtil {
 				if ((straightPaths[i][j] - 1) - j <= contourLengths[i] - 3) {
 					possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - 1;
 				} else {
-					while ((straightPaths[i][j] - lower) - j > contourLengths[i] - 3) {
-						lower++;
-					}
-					possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - lower;
-					lower = 1;
+					possibleSegments[i][(j + 1) % straightPaths[i].length] = Math.max(contourLengths[i] - 3, straightPaths[i][j] - 1);
 				}
 			}
 		}
