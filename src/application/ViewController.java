@@ -155,13 +155,14 @@ public class ViewController {
 		for (int i = 0; i < contours.size(); i++) {
 			countourLengths[i] = contours.get(i).path.length;
 		}
-		
+
 		this.possibleSegments = PolygonUtil.straightPathsToPossibleSegments(this.straightPaths, countourLengths);
 		this.polygons = PolygonUtil.getDrawableContoursFromZero(this.possibleSegments, countourLengths);
 	}
 
 	private void drawPolygons(GraphicsContext gc, double zoom) {
 		int lineWidth = (int) Math.max(1, zoom / 2);
+		int circleSize = lineWidth;
 		gc.setLineWidth(lineWidth);
 		gc.setStroke(Color.PURPLE);
 		for (int i = 0; i < this.polygons.length; i++) {
@@ -174,6 +175,7 @@ public class ViewController {
 			int toX = to % this.image.width;
 			int toY = to / this.image.width;
 			gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
+			gc.strokeOval(fromX * zoom - circleSize / 2, fromY * zoom - circleSize / 2, circleSize, circleSize);
 			for (int j = 2; j < polygon.length; j++) {
 				from = to;
 				to = contour[polygon[j]];
@@ -182,6 +184,7 @@ public class ViewController {
 				toX = to % this.image.width;
 				toY = to / this.image.width;
 				gc.strokeLine(fromX * zoom, fromY * zoom, toX * zoom, toY * zoom);
+				gc.strokeOval(fromX * zoom - circleSize / 2, fromY * zoom - circleSize / 2, circleSize, circleSize);
 			}
 		}
 	}
