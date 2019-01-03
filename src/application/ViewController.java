@@ -157,7 +157,14 @@ public class ViewController {
 		}
 
 		this.possibleSegments = PolygonUtil.straightPathsToPossibleSegments(this.straightPaths, countourLengths);
-		this.polygons = PolygonUtil.getDrawableContoursFromZero(this.possibleSegments, countourLengths);
+		List<int[]> polys = new ArrayList<>();
+		for (int i = 0; i < this.possibleSegments.length; i++) {
+			polys.add(PolygonUtil.getDrawablePolygons(this.possibleSegments[i], countourLengths[i], 0));
+		}
+		this.polygons = new int[polys.size()][];
+		for (int i = 0; i < polys.size(); i++) {
+			this.polygons[i] = polys.get(i);
+		}
 	}
 
 	private void drawPolygons(GraphicsContext gc, double zoom) {

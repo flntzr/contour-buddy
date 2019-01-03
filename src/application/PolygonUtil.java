@@ -8,23 +8,26 @@ public class PolygonUtil {
 	public static int[] c0;
 	public static int[] c1;
 
-	public static int[][] getDrawableContoursFromZero(int[][] possibleSegments, int[] contourLengths) {
-		int[][] result = new int[possibleSegments.length][];
-		for (int i = 0; i < possibleSegments.length; i++) {
-			List<Integer> paths = new ArrayList<>();
-			paths.add(0);
-			int next = possibleSegments[i][0] % contourLengths[i];
-			paths.add(next % contourLengths[i]);
-			while (next < possibleSegments[i].length) {
-				next = possibleSegments[i][next];
-				paths.add(next);
-			}
-			// correct the last entry to close with point 0
-			paths.set(paths.size() - 1, 0);
-			result[i] = paths.stream().mapToInt(k -> k).toArray();
+	public static int[] getDrawablePolygons(int[] possibleSegments, int contourLength, int startIdx) {
+		List<Integer> paths = new ArrayList<>();
+		paths.add(startIdx % contourLength);
+		int next = possibleSegments[startIdx] % contourLength;
+		paths.add(next % contourLength);
+		int travelledLength = 0;
+		while (travelledLength < possibleSegments.length) {
+			int nextDistance = possibleSegments[next] - next;
+			next = (next + nextDistance) % contourLength;
+			travelledLength += nextDistance;
+			paths.add(next);
 		}
-		return result;
+		// correct the last entry to close with startIdx
+		paths.set(paths.size() - 1, startIdx);
+		return paths.stream().mapToInt(k -> k).toArray();
 	}
+
+//	public static int[] getBestPolygon(int[][] polygons) {
+//
+//	}
 
 	public static int[][] straightPathsToPossibleSegments(int[][] straightPaths, int[] contourLengths) {
 		int[][] possibleSegments = new int[straightPaths.length][];
@@ -34,7 +37,8 @@ public class PolygonUtil {
 				if ((straightPaths[i][j] - 1) - j <= contourLengths[i] - 3) {
 					possibleSegments[i][(j + 1) % straightPaths[i].length] = straightPaths[i][j] - 1;
 				} else {
-					possibleSegments[i][(j + 1) % straightPaths[i].length] = Math.max(contourLengths[i] - 3, straightPaths[i][j] - 1);
+					int maxAllowedSegmentLength = Math.min(contourLengths[i] - 3, straightPaths[i][j] - 1 - j);
+					possibleSegments[i][(j + 1) % straightPaths[i].length] = maxAllowedSegmentLength + j + 1;
 				}
 			}
 		}
