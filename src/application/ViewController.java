@@ -159,7 +159,7 @@ public class ViewController {
 		this.possibleSegments = PolygonUtil.straightPathsToPossibleSegments(this.straightPaths, countourLengths);
 		List<int[]> polys = new ArrayList<>();
 		for (int i = 0; i < this.possibleSegments.length; i++) {
-			polys.add(PolygonUtil.getDrawablePolygons(this.possibleSegments[i], countourLengths[i], 0));
+			polys.add(PolygonUtil.getBestPolygon(this.possibleSegments[i], countourLengths[i]));
 		}
 		this.polygons = new int[polys.size()][];
 		for (int i = 0; i < polys.size(); i++) {

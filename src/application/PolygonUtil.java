@@ -8,14 +8,14 @@ public class PolygonUtil {
 	public static int[] c0;
 	public static int[] c1;
 
-	public static int[] getDrawablePolygons(int[] possibleSegments, int contourLength, int startIdx) {
+	public static int[] getDrawablePolygon(int[] possibleSegments, int contourLength, int startIdx) {
 		List<Integer> paths = new ArrayList<>();
 		paths.add(startIdx % contourLength);
 		int next = possibleSegments[startIdx] % contourLength;
 		paths.add(next % contourLength);
-		int travelledLength = 0;
-		while (travelledLength < possibleSegments.length) {
-			int nextDistance = possibleSegments[next] - next;
+		int travelledLength = paths.get(1) - paths.get(0);
+		while (travelledLength < contourLength) {
+			int nextDistance = Math.abs((possibleSegments[next]) - next) % contourLength;
 			next = (next + nextDistance) % contourLength;
 			travelledLength += nextDistance;
 			paths.add(next);
@@ -25,9 +25,18 @@ public class PolygonUtil {
 		return paths.stream().mapToInt(k -> k).toArray();
 	}
 
-//	public static int[] getBestPolygon(int[][] polygons) {
-//
-//	}
+	public static int[] getBestPolygon(int[] possibleSegments, int contourLength) {
+		int polygonLength = Integer.MAX_VALUE;
+		int[] result = new int[0];
+		for (int i = 0; i < possibleSegments.length; i++) {
+			int[] poly = PolygonUtil.getDrawablePolygon(possibleSegments, contourLength, i);
+			if (poly.length < polygonLength) {
+				result = poly;
+				polygonLength = poly.length;
+			}
+		}
+		return result;
+	}
 
 	public static int[][] straightPathsToPossibleSegments(int[][] straightPaths, int[] contourLengths) {
 		int[][] possibleSegments = new int[straightPaths.length][];
