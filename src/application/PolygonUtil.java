@@ -72,15 +72,18 @@ public class PolygonUtil {
 			int endIndex = 0;
 			int iX = path[i] % width;
 			int iY = path[i] / width;
+			int[] v = { 0, 0 };
 			for (int k = i + 1; k < i + path.length; k++) {
 				// k marks the (current) end point of the path
-				if (countDirections(directions) > 3) {
-					break;
-				}
 				int boundedK = k % path.length;
 				int kX = path[boundedK] % width;
 				int kY = path[boundedK] / width;
-				int[] v = { kX - iX, kY - iY };
+				int[] vNew = {kX - iX, kY - iY};
+				directions = addDirection(directions, new int[] {vNew[0] - v[0], vNew[1] - v[1]});
+				v = vNew;
+				if (countDirections(directions) > 3) {
+					break;
+				}
 				if (!respectsConstrains(v)) {
 					break;
 				}
@@ -153,5 +156,17 @@ public class PolygonUtil {
 			}
 		}
 		return 4;
+	}
+	
+	private static int[][] addDirection(int[][] directions, int[] direction) {
+		for (int i = 0; i < directions.length; i++) {
+			if ((directions[i][0] == direction[0] && directions[i][1] == direction[1])) {
+				return directions;
+			} else if (directions[i][0] == 0 && directions[i][1] == 0) {
+				directions[i] = direction;
+				return directions;
+			}
+		}
+		return directions;
 	}
 }
